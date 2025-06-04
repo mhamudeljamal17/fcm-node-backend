@@ -17,6 +17,7 @@ admin.initializeApp({
 });
 //
 app.post('/send-fcm', async (req, res) => {
+    console.log('Received request:', req.body); // <--- This should appear in Render logs
   const { token, title, body, data } = req.body;
   if (!token || !title || !body) {
     return res.status(400).json({ error: 'Missing fields' });
