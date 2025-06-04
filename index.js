@@ -1,12 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const admin = require('firebase-admin');
-
-const app = express();
-app.use(bodyParser.json());
-
-//
-
 const fs = require('fs');
 const path = '/etc/secrets/serviceAccountKey.json'; // this is where Render mounts the file
 
@@ -15,6 +9,13 @@ const serviceAccount = JSON.parse(fs.readFileSync(path, 'utf8'));
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
+
+const app = express();
+app.use(bodyParser.json());
+
+//
+
+
 //
 app.post('/send-fcm', async (req, res) => {
     console.log('Received request:', req.body); // <--- This should appear in Render logs
@@ -46,12 +47,13 @@ const { Firestore } = require('@google-cloud/firestore');
 const firestore = new Firestore();
 
 app.post('/process-scheduled-reminders', async (req, res) => {
+  
   try {
     const now = new Date();
     const remindersRef = firestore.collection('scheduled_notifications');
     const query = remindersRef
       .where('sent', '==', false)
-      .where('scheduledFor', '<=', now);
+      .where('scheduledTime', '<=', now);
 
     const snapshot = await query.get();
     if (snapshot.empty) {
