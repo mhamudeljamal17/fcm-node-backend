@@ -37,3 +37,47 @@ app.post('/send-fcm', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`FCM server running on port ${PORT}`));
+
+
+
+
+
+const { Firestore } = require('@google-cloud/firestore');
+const firestore = new Firestore();
+
+app.post('/process-scheduled-reminders', async (req, res) => {
+  try {
+    const now = new Date();
+    const remindersRef = firestore.collection('scheduled_notifications');
+    const query = remindersRef
+      .where('sent', '==', false)
+      .where('scheduledFor', '<=', now);
+
+    const snapshot = await query.get();
+    if (snapshot.empty) {
+      return res.json({ success: true, message: 'No reminders to send.' });
+    }
+
+    let sentCount = 0;
+    for (const doc of snapshot.docs) {
+      const reminder = doc.data();
+      // Get user FCM token
+      const userDoc = await firestore.collection('users').doc(reminder.userId).get();
+      const fcmToken = userDoc.data().fcmToken;
+      if (fcmToken) {
+        await admin.messaging().send({
+          token: fcmToken,
+          notification: { title: reminder.title, body: reminder.message },
+          data: reminder.data || {},
+        });
+        sentCount++;
+      }
+      // Mark as sent
+      await doc.ref.update({ sent: true, sentAt: new Date() });
+    }
+    res.json({ success: true, sent: sentCount });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
