@@ -5,11 +5,17 @@ const admin = require('firebase-admin');
 const app = express();
 app.use(bodyParser.json());
 
-// Load Firebase Admin with your service account key
-admin.initializeApp({
-  credential: admin.credential.cert(require('./serviceAccountKey.json'))
-});
+//
 
+const fs = require('fs');
+const path = '/etc/secrets/serviceAccountKey.json'; // this is where Render mounts the file
+
+const serviceAccount = JSON.parse(fs.readFileSync(path, 'utf8'));
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+//
 app.post('/send-fcm', async (req, res) => {
   const { token, title, body, data } = req.body;
   if (!token || !title || !body) {
